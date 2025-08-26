@@ -23,6 +23,7 @@ package fpdf_test
 import (
 	"bufio"
 	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"math"
@@ -657,6 +658,39 @@ func ExampleFpdf_ImageOptions() {
 	example.SummaryCompare(err, fileStr)
 	// Output:
 	// Successfully generated pdf/Fpdf_ImageOptions.pdf
+}
+
+//go:embed image/*
+var imageStaticFiles embed.FS
+
+func getImageData(fileName string) ([]byte, error) {
+	data, err := imageStaticFiles.ReadFile("image/" + fileName)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func ExampleFpdf_ImageOptionsFromBytes() {
+	var opt fpdf.ImageOptions
+
+	pdf := fpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+	pdf.SetFont("Arial", "", 11)
+	pdf.SetX(60)
+	opt.ImageType = "png"
+	imageData, err := getImageData("gofpdf.png")
+	if err != nil {
+		pdf.SetError(err)
+	}
+	pdf.ImageOptionsFromBytes("gofpdf.png", -10, 10, 30, 0, false, opt, 0, "", imageData)
+	opt.AllowNegativePosition = true
+	pdf.ImageOptionsFromBytes("gofpdf.png", -10, 50, 30, 0, false, opt, 0, "", imageData)
+	fileStr := example.Filename("Fpdf_ImageOptionsFromBytes")
+	err = pdf.OutputFileAndClose(fileStr)
+	example.SummaryCompare(err, fileStr)
+	// Output:
+	// Successfully generated pdf/Fpdf_ImageOptionsFromBytes.pdf
 }
 
 // ExampleFpdf_RegisterImageOptionsReader demonstrates how to load an image
