@@ -3368,6 +3368,33 @@ func (f *Fpdf) ImageOptions(imageNameStr string, x, y, w, h float64, flow bool, 
 	f.imageOut(info, x, y, w, h, options.AllowNegativePosition, flow, link, linkStr)
 }
 
+// ImageOptionsFromBytes embeds an image in the PDF using binary data.
+//
+// The image is provided as a binary byte slice rather than being read from a file.
+// This method registers the image and places it on the page.
+//
+// Parameters:
+// - imageNameStr: The name of the image.
+// - x, y: The coordinates where the image will be placed.
+// - w, h: The width and height of the image. If either dimension is set to 0, it will be calculated automatically to maintain the image's aspect ratio.
+// - flow: A boolean indicating whether the image should flow to the next line after being placed.
+// - options: An ImageOptions struct specifying additional options like image type, DPI, and whether to allow negative positions.
+// - link: An integer representing a link to associate with the image.
+// - linkStr: A string representing a URL to associate with the image.
+// - imageData: A byte slice containing the binary data of the image.
+//
+// This method internally calls RegisterImageOptionsFromBytes to register the image and then uses imageOut to place it on the page.
+func (f *Fpdf) ImageOptionsFromBytes(imageNameStr string, x, y, w, h float64, flow bool, options ImageOptions, link int, linkStr string, imageData []byte) {
+	if f.err != nil {
+		return
+	}
+	info := f.RegisterImageOptionsFromBytes(imageNameStr, options, imageData)
+	if f.err != nil {
+		return
+	}
+	f.imageOut(info, x, y, w, h, options.AllowNegativePosition, flow, link, linkStr)
+}
+
 // RegisterImageReader registers an image, reading it from Reader r, adding it
 // to the PDF file but not adding it to the page.
 //
@@ -3492,6 +3519,32 @@ func (f *Fpdf) RegisterImageOptions(fileStr string, options ImageOptions) (info 
 	}
 
 	return f.RegisterImageOptionsReader(fileStr, options, file)
+}
+
+// RegisterImageOptionsFromBytes registers an image from binary inputs, adding it to the PDF file but not adding it to the page.
+// The image is provided as a binary byte slice rather than being read from a file.
+// Use ImageOptionsFromBytes() with the same image name to add the image to the page.
+// Note that ImageOptionsFromBytes() calls this function, so this function is only necessary if you need information about the image before placing it.
+// See ImageOptionsFromBytes() for restrictions on the image and the "options" parameters.
+func (f *Fpdf) RegisterImageOptionsFromBytes(imageNameStr string, options ImageOptions, imgData []byte) (info *ImageInfoType) {
+	if f.err != nil {
+		return
+	}
+	info, ok := f.images[imageNameStr]
+	if ok {
+		return
+	}
+	if options.ImageType == "" {
+		pos := strings.LastIndex(imageNameStr, ".")
+		if pos < 0 {
+			f.err = fmt.Errorf("image name has no extension and no type was specified: %s", imageNameStr)
+			return
+		}
+		options.ImageType = imageNameStr[pos+1:]
+	}
+
+	r := bytes.NewReader(imgData)
+	return f.RegisterImageOptionsReader(imageNameStr, options, r)
 }
 
 // GetImageInfo returns information about the registered image specified by
